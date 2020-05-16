@@ -1,14 +1,15 @@
 package com.mcsunnyside.qqverify;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import org.meowy.cqp.jcq.entity.*;
 import org.meowy.cqp.jcq.event.JcqAppAbstract;
 
 import java.net.URL;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 public class qqverify extends JcqAppAbstract implements ICQVer, IMsg, IRequest {
-    private final Map<Long,String> mapping = new HashMap<>();
+    private final Cache<Long,String> mapping = CacheBuilder.newBuilder().expireAfterWrite(10, TimeUnit.MINUTES).build();
     String appDirectory;
     public String appInfo() {
         String AppID = "com.mcsunnyside.qqverify.qqverify";// 记住编译后的文件和json也要使用appid做文件名
@@ -73,12 +74,12 @@ public class qqverify extends JcqAppAbstract implements ICQVer, IMsg, IRequest {
             return 0;
         }
 
-        String name = mapping.get(fromQQ);
+        String name = mapping.getIfPresent(fromQQ);
         if (name == null) {
             return MSG_IGNORE;
         }
         CQ.setGroupCard(fromGroup, fromQQ, name);
-        mapping.remove(fromQQ);
+        mapping.invalidate(fromQQ);
         return MSG_IGNORE;
     }
 
@@ -104,15 +105,14 @@ public class qqverify extends JcqAppAbstract implements ICQVer, IMsg, IRequest {
 
     @Override
     public int groupMemberIncrease(int subtype, int sendTime, long fromGroup, long fromQQ, long beingOperateQQ) {
-        String name = mapping.get(beingOperateQQ);
+        String name = mapping.getIfPresent(beingOperateQQ);
         if(name == null){
-            name = mapping.get(fromQQ);
+            name = mapping.getIfPresent(fromQQ);
         }
         if(name == null){
             return MSG_IGNORE;
         }
         CQ.setGroupCard(fromGroup,beingOperateQQ,name);
-        mapping.remove(beingOperateQQ);
         return MSG_IGNORE;
     }
 
